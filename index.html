@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的词卡</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3898/3898150.png">
+    
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --bg-color: #f0f2f5;
+        }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0; padding: env(safe-area-inset-top) 20px 40px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        h1 { color: #2d3436; margin: 20px 0; font-size: 1.5rem; }
+
+        /* 卡片 3D 翻转容器 */
+        .card-container {
+            width: 100%; max-width: 350px; height: 220px;
+            perspective: 1000px; margin-bottom: 30px;
+        }
+
+        .card {
+            width: 100%; height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .card.is-flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 20px; font-size: 28px; font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 20px; box-sizing: border-box; text-align: center;
+        }
+
+        .card-front { background: white; color: var(--primary-color); }
+        .card-back { 
+            background: var(--primary-color); color: white; 
+            transform: rotateY(180deg); font-size: 20px;
+        }
+
+        /* 控制按钮 */
+        .controls { display: flex; gap: 15px; margin-bottom: 30px; }
+        .btn {
+            padding: 12px 25px; border: none; border-radius: 50px;
+            background: white; color: var(--primary-color);
+            font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .btn-main { background: var(--primary-color); color: white; }
+
+        /* 输入区域 */
+        .input-group {
+            width: 100%; max-width: 350px; background: white;
+            padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        input {
+            width: 100%; padding: 12px; margin: 8px 0;
+            border: 1px solid #eee; border-radius: 8px; box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .word-list { width: 100%; max-width: 350px; margin-top: 20px; }
+        .word-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fff; padding: 10px 15px; margin-bottom: 5px;
+            border-radius: 8px; font-size: 14px; color: #666;
+        }
+        .del-btn { color: #ff7675; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h1>我的词卡</h1>
+
+    <div class="card-container">
+        <div class="card" id="mainCard" onclick="this.classList.toggle('is-flipped')">
+            <div class="card-face card-front" id="frontText">点击添加单词</div>
+            <div class="card-face card-back" id="backText">点击翻转查看</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="prevCard()">←</button>
+        <button class="btn btn-main" onclick="nextCard()">随机抽取</button>
+        <button class="btn" onclick="nextCard()">→</button>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="wordInput" placeholder="输入单词 (如: coding)">
+        <input type="text" id="defInput" placeholder="输入释义 (如: 编程)">
+        <button class="btn btn-main" style="width: 100%; margin-top: 10px;" onclick="addWord()">添加到我的词库</button>
+    </div>
+
+    <div class="word-list" id="wordList"></div>
+
+    <script>
+        let words = JSON.parse(localStorage.getItem('myWords')) || [];
+        let currentIndex = 0;
+
+        function save() {
+            localStorage.setItem('myWords', JSON.stringify(words));
+            renderList();
+        }
+
+        function addWord() {
+            const word = document.getElementById('wordInput').value;
+            const def = document.getElementById('defInput').value;
+            if (!word || !def) return alert("请完整填写内容");
+
+            words.push({ word, def });
+            document.getElementById('wordInput').value = '';
+            document.getElementById('defInput').value = '';
+            save();
+            showCard(words.length - 1);
+        }
+
+        function showCard(index) {
+            if (words.length === 0) return;
+            currentIndex = index;
+            const card = document.getElementById('mainCard');
+            card.classList.remove('is-flipped');
+            
+            // 稍作延迟等待翻回正面后再切换文字
+            setTimeout(() => {
+                document.getElementById('frontText').innerText = words[index].word;
+                document.getElementById('backText').innerText = words[index].def;
+            }, 150);
+        }
+
+        function nextCard() {
+            if (words.length === 0) return;
+            const next = Math.floor(Math.random() * words.length);
+            showCard(next);
+        }
+
+        function prevCard() {
+            if (words.length === 0) return;
+            let prev = currentIndex - 1 < 0 ? words.length - 1 : currentIndex - 1;
+            showCard(prev);
+        }
+
+        function deleteWord(index) {
+            words.splice(index, 1);
+            save();
+            if (words.length > 0) showCard(0);
+            else {
+                document.getElementById('frontText').innerText = "已空";
+                document.getElementById('backText').innerText = "请添加单词";
+            }
+        }
+
+        function renderList() {
+            const list = document.getElementById('wordList');
+            list.innerHTML = '';
+            words.forEach((w, i) => {
+                const item = document.createElement('div');
+                item.className = 'word-item';
+                item.innerHTML = `<span>${w.word}</span> <span class="del-btn" onclick="deleteWord(${i})">删除</span>`;
+                item.onclick = (e) => {
+                    if(!e.target.classList.contains('del-btn')) showCard(i);
+                };
+                list.appendChild(item);
+            });
+        }
+
+        // 初始化加载
+        if (words.length > 0) showCard(0);
+        renderList();
+    </script>
+</body>
+</html>
